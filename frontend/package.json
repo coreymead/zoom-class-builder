@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "homepage": "https://corey.github.io/zoom-class-builder",
+  "homepage": "https://coreymead.github.io/zoom-class-builder",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
