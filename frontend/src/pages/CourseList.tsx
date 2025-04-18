@@ -200,7 +200,20 @@ const CourseList = () => {
                   }}
                 >
                   <TableCell sx={{ py: 2 }}>
-                    {course.name}
+                    <Typography
+                      component={Link}
+                      to={`/courses/${course.id}`}
+                      sx={{
+                        color: 'inherit',
+                        textDecoration: 'none',
+                        fontWeight: 500,
+                        '&:hover': {
+                          color: 'primary.main'
+                        }
+                      }}
+                    >
+                      {course.name}
+                    </Typography>
                   </TableCell>
                   <TableCell sx={{ py: 2, color: 'text.secondary' }}>
                     {course.description || 'No description'}
