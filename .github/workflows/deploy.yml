@@ -39,6 +39,4 @@ jobs:
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          folder: frontend/dist
-          branch: gh-pages
-          clean: true # Automatically remove deleted files from the deployment 
+          folder: dist
