@@ -1,9 +1,11 @@
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import { ThemeProvider, createTheme, CssBaseline, Box, Container } from '@mui/material'
 import Navbar from './components/Navbar'
 import CourseList from './pages/CourseList'
 import CourseDetails from './pages/CourseDetails'
 import CourseForm from './pages/CourseForm'
+import ZoomSetup from './pages/ZoomSetup'
+import BulkZoomSetup from './pages/BulkZoomSetup'
 
 // Create a theme instance
 const theme = createTheme({
@@ -91,8 +93,11 @@ function App() {
           <Routes>
             <Route path="/" element={<CourseList />} />
             <Route path="/courses/new" element={<CourseForm />} />
+            <Route path="/courses/bulk-zoom-setup" element={<BulkZoomSetup />} />
             <Route path="/courses/:id" element={<CourseDetails />} />
             <Route path="/courses/:id/edit" element={<CourseForm />} />
+            <Route path="/courses/:id/zoom-setup" element={<ZoomSetup />} />
+            <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </Container>
       </Box>

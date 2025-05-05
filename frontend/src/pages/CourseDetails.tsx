@@ -1,17 +1,20 @@
-import { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import CourseService from '../services/CourseService';
 import { Course, User, UserRole } from '../types';
+import { ResourceType } from '../components/ZoomResourceSetup';
 import { 
   Typography, Box, Button, Paper, TextField, Select, MenuItem,
   FormControl, InputLabel, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, CircularProgress, Alert, Divider,
   Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle,
-  Grid
+  Grid, Tooltip
 } from '@mui/material';
-import { ArrowBack, Delete, Edit } from '@mui/icons-material';
+import { ArrowBack, Delete, Edit, Visibility, Chat, VideoCall, Dashboard } from '@mui/icons-material';
+import { format } from 'date-fns';
+import ZoomResourceManager from '../components/ZoomResourceManager';
 
-const CourseDetails = () => {
+const CourseDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [course, setCourse] = useState<Course | null>(null);
@@ -22,18 +25,20 @@ const CourseDetails = () => {
 
   useEffect(() => {
     const fetchCourse = async () => {
-      if (!id) return;
-      
+      if (!id) {
+        setError('Course ID is required');
+        setLoading(false);
+        return;
+      }
+
       try {
         const data = await CourseService.getCourseById(id);
-        if (data) {
-          setCourse(data);
-        } else {
-          setError('Course not found');
-        }
-        setLoading(false);
+        console.debug('Fetched course details:', data);
+        setCourse(data);
       } catch (err) {
-        setError('Failed to load course details');
+        console.error('Error fetching course details:', err);
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      } finally {
         setLoading(false);
       }
     };
@@ -42,21 +47,31 @@ const CourseDetails = () => {
   }, [id]);
 
   const handleDeleteCourse = async () => {
-    if (!course) return;
+    if (!course) {
+      console.error('Attempted to delete course but no course is loaded');
+      return;
+    }
     
     try {
       const success = await CourseService.deleteCourse(course.id);
       if (success) {
         navigate('/');
+      } else {
+        console.error('Delete course returned false');
+        setError('Failed to delete course');
       }
     } catch (err) {
+      console.error('Error deleting course:', err);
       setError('Failed to delete course');
     }
   };
 
   const handleAddUser = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!course || !newUser.name) return;
+    if (!course || !newUser.name) {
+      console.error('Invalid state for adding user:', { course, newUser });
+      return;
+    }
     
     try {
       const user: User = {
@@ -67,42 +82,81 @@ const CourseDetails = () => {
       
       const updatedCourse = await CourseService.addUserToCourse(course.id, user);
       if (updatedCourse) {
+        console.debug('Successfully added user to course:', { user, courseId: course.id });
         setCourse(updatedCourse);
         setNewUser({ name: '', role: 'student' as UserRole });
       }
     } catch (err) {
+      console.error('Error adding user to course:', err);
       setError('Failed to add user');
     }
   };
 
   const handleRemoveUser = async (userId: string) => {
-    if (!course) return;
+    if (!course) {
+      console.error('Attempted to remove user but no course is loaded');
+      return;
+    }
     
     try {
       const updatedCourse = await CourseService.removeUserFromCourse(course.id, userId);
       if (updatedCourse) {
+        console.debug('Successfully removed user from course:', { userId, courseId: course.id });
         setCourse(updatedCourse);
       }
     } catch (err) {
+      console.error('Error removing user from course:', err);
       setError('Failed to remove user');
     }
   };
 
   const handleUpdateUserRole = async (userId: string, role: UserRole) => {
-    if (!course) return;
+    if (!course) {
+      console.error('Attempted to update user role but no course is loaded');
+      return;
+    }
     
     try {
       const updatedCourse = await CourseService.updateUserRole(course.id, userId, role);
       if (updatedCourse) {
+        console.debug('Successfully updated user role:', { userId, role, courseId: course.id });
         setCourse(updatedCourse);
       }
     } catch (err) {
+      console.error('Error updating user role:', err);
       setError('Failed to update user role');
     }
   };
 
   const handleDeleteClick = () => {
     setDialogOpen(true);
+  };
+
+  const handleResourceClick = (resourceType: ResourceType) => {
+    if (!course?.zoomResources?.[resourceType]?.resourceId) {
+      console.debug('Resource not initialized:', resourceType);
+      return;
+    }
+    console.debug('Opening resource:', resourceType, course.zoomResources[resourceType].resourceId);
+    // TODO: Implement actual resource opening logic
+  };
+
+  const handleViewResource = (resourceType: ResourceType) => {
+    if (!course?.zoomResources?.[resourceType]?.resourceId) {
+      console.debug('No resource to view:', resourceType);
+      return;
+    }
+    console.debug('Viewing resource:', resourceType, course.zoomResources[resourceType].resourceId);
+    // TODO: Implement actual resource viewing logic
+  };
+
+  const handleDeleteResource = (resourceType: ResourceType) => {
+    if (!course?.zoomResources?.[resourceType]?.resourceId) {
+      console.debug('No resource to delete:', resourceType);
+      return;
+    }
+    console.debug('Deleting resource:', resourceType, course.zoomResources[resourceType].resourceId);
+    // TODO: Implement actual resource deletion logic
   };
 
   if (loading) {
@@ -123,53 +177,161 @@ const CourseDetails = () => {
 
   return (
     <Box>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+        <Typography variant="h4" component="h1">
+          {course.name}
+        </Typography>
+        <Box>
+          <Button
+            variant="outlined"
+            onClick={() => navigate('/courses')}
+            sx={{ mr: 1 }}
+          >
+            Back
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => navigate(`/courses/${id}/edit`)}
+          >
+            Edit Course
+          </Button>
+        </Box>
+      </Box>
+
+      <Grid container spacing={3}>
+        <Grid item xs={12} md={8}>
+          <Paper sx={{ p: 3, mb: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              Course Details
+            </Typography>
+            <Typography variant="body1" paragraph>
+              {course.description}
+            </Typography>
+            <Box display="flex" gap={4}>
+              <Box>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Start Date
+                </Typography>
+                <Typography>
+                  {format(new Date(course.startDate), 'PPP')}
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="subtitle2" color="text.secondary">
+                  End Date
+                </Typography>
+                <Typography>
+                  {format(new Date(course.endDate), 'PPP')}
+                </Typography>
+              </Box>
+            </Box>
+          </Paper>
+        </Grid>
+
+        <Grid item xs={12} md={4}>
+          <Paper sx={{ p: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              Zoom Resources
+            </Typography>
+            {course.zoomResources ? (
+              <Box>
+                <Typography variant="body2" color="text.secondary" paragraph>
+                  Resource Status:
+                </Typography>
+                <Box sx={{ mb: 2 }}>
+                  {Object.entries(course.zoomResources).map(([type, resource]) => (
+                    <Box key={type} sx={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      alignItems: 'center',
+                      mb: 1,
+                      p: 1,
+                      borderRadius: 1,
+                      '&:hover': {
+                        bgcolor: 'action.hover'
+                      }
+                    }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Tooltip title={`${type.charAt(0).toUpperCase() + type.slice(1)} Resource`}>
+                          <IconButton 
+                            size="small" 
+                            onClick={() => handleResourceClick(type as ResourceType)}
+                            disabled={!resource.resourceId || resource.status !== 'created'}
+                            color={resource.status === 'created' ? 'primary' : 'default'}
+                          >
+                            {type === 'whiteboard' && <Dashboard />}
+                            {type === 'chat' && <Chat />}
+                            {type === 'meeting' && <VideoCall />}
+                          </IconButton>
+                        </Tooltip>
+                        <Typography variant="body2" sx={{ textTransform: 'capitalize' }}>
+                          {type}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography variant="body2" color={
+                          resource.status === 'created' ? 'success.main' :
+                          resource.status === 'error' ? 'error.main' :
+                          resource.status === 'pending' ? 'warning.main' : 'text.secondary'
+                        }>
+                          {resource.status || 'Not initialized'}
+                        </Typography>
+                        {resource.resourceId && (
+                          <>
+                            <Tooltip title="View Resource">
+                              <IconButton 
+                                size="small"
+                                onClick={() => handleViewResource(type as ResourceType)}
+                              >
+                                <Visibility fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Delete Resource">
+                              <IconButton 
+                                size="small"
+                                color="error"
+                                onClick={() => handleDeleteResource(type as ResourceType)}
+                              >
+                                <Delete fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </>
+                        )}
+                      </Box>
+                    </Box>
+                  ))}
+                </Box>
+                <Button
+                  variant="contained"
+                  fullWidth
+                  onClick={() => navigate(`/courses/${id}/zoom-setup`)}
+                >
+                  Manage Zoom Resources
+                </Button>
+              </Box>
+            ) : (
+              <Box>
+                <Typography variant="body2" color="text.secondary" paragraph>
+                  No Zoom resources have been initialized for this course.
+                </Typography>
+                <Button
+                  variant="contained"
+                  fullWidth
+                  onClick={() => navigate(`/courses/${id}/zoom-setup`)}
+                >
+                  Initialize Zoom Resources
+                </Button>
+              </Box>
+            )}
+          </Paper>
+        </Grid>
+      </Grid>
+
       <Paper elevation={0} sx={{ 
         border: '1px solid',
         borderColor: 'divider',
         p: 3,
         mb: 3
-      }}>
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-          <Typography 
-            variant="h4"
-            sx={{ 
-              fontSize: '2rem',
-              fontWeight: 600
-            }}
-          >
-            {course.name}
-          </Typography>
-          <Box>
-            <Button 
-              variant="outlined" 
-              startIcon={<Edit />} 
-              sx={{ mr: 1 }}
-              onClick={() => navigate(`/courses/${course.id}/edit`)}
-            >
-              Edit
-            </Button>
-            <Button 
-              variant="outlined" 
-              color="error" 
-              startIcon={<Delete />}
-              onClick={handleDeleteClick}
-            >
-              Delete
-            </Button>
-          </Box>
-        </Box>
-
-        <Divider sx={{ my: 2 }} />
-        
-        <Typography variant="body1" color="text.secondary">
-          {course.description || 'No description provided.'}
-        </Typography>
-      </Paper>
-
-      <Paper elevation={0} sx={{ 
-        border: '1px solid',
-        borderColor: 'divider',
-        p: 3
       }}>
         <Typography variant="h5" gutterBottom sx={{ fontWeight: 600 }}>
           Participants ({course.users.length})
@@ -265,10 +427,11 @@ const CourseDetails = () => {
       <Box sx={{ mt: 3 }}>
         <Button
           variant="outlined"
-          startIcon={<ArrowBack />}
-          onClick={() => navigate('/')}
+          color="error"
+          startIcon={<Delete />}
+          onClick={handleDeleteClick}
         >
-          Back to Courses
+          Delete Course
         </Button>
       </Box>
 
@@ -295,4 +458,4 @@ const CourseDetails = () => {
   );
 };
 
-export default CourseDetails; 
+export default CourseDetails;

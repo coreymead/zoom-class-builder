@@ -1,0 +1,22 @@
+# Version control
+.git
+.gitignore
+
+# IDE and editor files
+.idea
+.vscode
+*.swp
+*.swo
+.DS_Store
+
+# Documentation
+README.md
+LICENSE
+
+# Docker
+docker-compose.yml
+.dockerignore
+
+# Project directories (handled by their own .dockerignore files)
+frontend/
+api/ 

@@ -1,166 +1,125 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import CourseService from '../services/CourseService';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Box, Button, TextField, Typography, Paper } from '@mui/material';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { format, parseISO } from 'date-fns';
 import { CourseFormData } from '../types';
-import {
-  Typography,
-  Box,
-  TextField,
-  Button,
-  CircularProgress,
-  Alert,
-  Paper,
-  Stack,
-  Divider
-} from '@mui/material';
-import { Save, Cancel } from '@mui/icons-material';
 
-const CourseForm = () => {
-  const { id } = useParams<{ id: string }>();
+interface FormState extends Omit<CourseFormData, 'startDate' | 'endDate'> {
+  startDate: Date;
+  endDate: Date;
+}
+
+const CourseForm: React.FC = () => {
   const navigate = useNavigate();
-  const isEditMode = !!id;
-  
-  const [formData, setFormData] = useState<CourseFormData>({
+  const [formData, setFormData] = useState<FormState>({
     name: '',
-    description: ''
+    description: '',
+    startDate: new Date(),
+    endDate: new Date()
   });
-  const [loading, setLoading] = useState<boolean>(isEditMode);
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchCourse = async () => {
-      if (!id) return;
-      
-      try {
-        const data = await CourseService.getCourseById(id);
-        if (data) {
-          setFormData({
-            name: data.name,
-            description: data.description || ''
-          });
-        } else {
-          setError('Course not found');
-        }
-        setLoading(false);
-      } catch (err) {
-        setError('Failed to load course details');
-        setLoading(false);
-      }
-    };
-
-    if (isEditMode) {
-      fetchCourse();
-    }
-  }, [id, isEditMode]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
-  };
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     try {
-      if (isEditMode) {
-        await CourseService.updateCourse(id!, formData);
-        navigate(`/courses/${id}`);
-      } else {
-        const newCourse = await CourseService.createCourse(formData);
-        navigate(`/courses/${newCourse.id}`);
+      const submissionData: CourseFormData = {
+        ...formData,
+        startDate: format(formData.startDate, 'yyyy-MM-dd'),
+        endDate: format(formData.endDate, 'yyyy-MM-dd')
+      };
+
+      const response = await fetch('/api/courses', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(submissionData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create course');
       }
-    } catch (err) {
-      setError(`Failed to ${isEditMode ? 'update' : 'create'} course`);
+
+      navigate('/');
+    } catch (error) {
+      console.error('Error creating course:', error);
     }
   };
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
-        <CircularProgress />
-      </Box>
-    );
-  }
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
 
-  if (error) {
-    return <Alert severity="error">{error}</Alert>;
-  }
+  const handleDateChange = (field: 'startDate' | 'endDate') => (date: Date | null) => {
+    if (date) {
+      setFormData(prev => ({
+        ...prev,
+        [field]: date
+      }));
+    }
+  };
 
   return (
-    <Box sx={{ maxWidth: 800, mx: 'auto', width: '100%' }}>
-      <Paper elevation={0} sx={{ 
-        border: '1px solid',
-        borderColor: 'divider',
-      }}>
-        <Box sx={{ p: 3 }}>
-          <Typography 
-            variant="h4" 
-            component="h1" 
-            sx={{ 
-              fontSize: '2rem',
-              fontWeight: 600,
-              color: 'text.primary',
-              mb: 3
-            }}
-          >
-            {isEditMode ? 'Edit Course' : 'Create New Course'}
-          </Typography>
-          
-          <Box component="form" onSubmit={handleSubmit}>
-            <Stack spacing={3}>
-              <TextField
-                fullWidth
-                id="name"
-                name="name"
-                label="Course Name"
-                value={formData.name}
-                onChange={handleChange}
-                required
-                variant="outlined"
+    <Box sx={{ p: 3, maxWidth: 600, mx: 'auto' }}>
+      <Paper sx={{ p: 3 }}>
+        <Typography variant="h4" gutterBottom>
+          Create New Course
+        </Typography>
+        <form onSubmit={handleSubmit}>
+          <TextField
+            fullWidth
+            margin="normal"
+            label="Course Name"
+            name="name"
+            value={formData.name}
+            onChange={handleInputChange}
+            required
+          />
+          <TextField
+            fullWidth
+            margin="normal"
+            label="Description"
+            name="description"
+            value={formData.description}
+            onChange={handleInputChange}
+            multiline
+            rows={4}
+            required
+          />
+          <LocalizationProvider dateAdapter={AdapterDateFns}>
+            <Box sx={{ my: 2 }}>
+              <DatePicker
+                label="Start Date"
+                value={formData.startDate}
+                onChange={handleDateChange('startDate')}
+                sx={{ width: '100%', mb: 2 }}
               />
-              
-              <TextField
-                fullWidth
-                id="description"
-                name="description"
-                label="Course Description"
-                value={formData.description}
-                onChange={handleChange}
-                variant="outlined"
-                multiline
-                rows={4}
-              />
-            </Stack>
-
-            <Divider sx={{ my: 4 }} />
-            
-            <Box sx={{ 
-              display: 'flex', 
-              justifyContent: 'flex-end', 
-              gap: 2
-            }}>
-              <Button
-                variant="outlined"
-                color="inherit"
-                startIcon={<Cancel />}
-                onClick={() => navigate(isEditMode ? `/courses/${id}` : '/')}
-              >
-                Cancel
-              </Button>
-              <Button 
-                type="submit" 
-                variant="contained" 
-                color="primary"
-                startIcon={<Save />}
-              >
-                {isEditMode ? 'Update Course' : 'Create Course'}
-              </Button>
             </Box>
-          </Box>
-        </Box>
+            <Box sx={{ my: 2 }}>
+              <DatePicker
+                label="End Date"
+                value={formData.endDate}
+                onChange={handleDateChange('endDate')}
+                sx={{ width: '100%' }}
+              />
+            </Box>
+          </LocalizationProvider>
+          <Button
+            type="submit"
+            variant="contained"
+            color="primary"
+            fullWidth
+            sx={{ mt: 3 }}
+          >
+            Create Course
+          </Button>
+        </form>
       </Paper>
     </Box>
   );

@@ -1,0 +1,50 @@
+# Go build artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+*.prof
+
+# Go workspace files
+go.work
+go.work.sum
+
+# Dependencies
+vendor/
+
+# Version control
+.git
+.gitignore
+
+# IDE and editor files
+.idea
+.vscode
+*.swp
+*.swo
+.DS_Store
+
+# Environment files
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Testing
+coverage
+*.cover
+
+# Documentation
+README.md
+LICENSE
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+# Frontend (since we're copying it in the Dockerfile)
+frontend/ 
